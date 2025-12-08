@@ -13,8 +13,6 @@
            SELECT INPUT-FILE ASSIGN TO 'INFILE.TXT'
                ORGANIZATION IS LINE SEQUENTIAL.
 
-
-
        DATA DIVISION.
        FILE SECTION.
        FD  INPUT-FILE
@@ -26,7 +24,7 @@
        01  INPUT-RECORD.
            05 IN-DIRECTION                      PIC X(1).
               88 DIR-LEFT                                  VALUE 'L'.
-              88 DIR-RIGHT                                 VALUE 'L'.
+              88 DIR-RIGHT                                 VALUE 'R'.
            05 IN-CLICKS                         PIC X(3).
 
        WORKING-STORAGE SECTION.
@@ -91,30 +89,27 @@
                ADD 1 TO WS-CLICK-DIGIT-LENGTH
            END-PERFORM
 
-      *    ROTATE DIAL
-           IF DIR-LEFT
-               SUBTRACT WS-CLICK-AMT FROM WS-DIAL-POS
-           ELSE
-               ADD      WS-CLICK-AMT TO   WS-DIAL-POS
-           END-IF
+           PERFORM WS-CLICK-AMT TIMES
+      *           ROTATE DIAL
+                  IF DIR-LEFT
+                      IF WS-DIAL-POS EQUAL 0
+                          MOVE 99 TO WS-DIAL-POS
+                      ELSE
+                          SUBTRACT 1 FROM WS-DIAL-POS
+                      END-IF
+                  ELSE
+                      IF WS-DIAL-POS EQUAL 99
+                          MOVE 0 TO WS-DIAL-POS
+                      ELSE
+                          ADD 1 TO   WS-DIAL-POS
+                      END-IF
+                  END-IF
 
-      *    HANDLE CROSSING 0
-           IF WS-DIAL-POS GREATER 99
-               PERFORM UNTIL WS-DIAL-POS NOT GREATER 99
-                   SUBTRACT 100 FROM WS-DIAL-POS
-               END-PERFORM
-           END-IF
-
-           IF WS-DIAL-POS LESS 0
-               PERFORM UNTIL WS-DIAL-POS NOT LESS 0
-                   ADD 100 TO   WS-DIAL-POS
-               END-PERFORM
-           END-IF
-
-      *    INCREMENT OUTPUT IF LANDED AT 0
-           IF WS-DIAL-POS EQUAL 0
-               ADD 1 TO OUT-TIMES-AT-ZERO
-           END-IF
+      *    INCREMENT OUTPUT IF AT 0
+               IF WS-DIAL-POS EQUAL 0
+                   ADD 1 TO OUT-TIMES-AT-ZERO
+               END-IF
+           END-PERFORM
            .
        2000-EXIT.
            EXIT.
