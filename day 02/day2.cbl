@@ -41,16 +41,11 @@
        01  WS-START-NUM                         PIC 9(2).
        01  WS-NUM-LENGTH                        PIC 9(2).
        01  WS-HALF                              PIC 9(1).
-       01  WS-VAL-START-POS                     PIC 9(2).
-       01  WS-POT-SEQ                           PIC 9(5).
-       01  WS-CUR-SEQ                           PIC 9(5).
-       01  WS-DIFF-FOUND                        PIC X(1).
-           88 DIFF-FOUND                                   VALUE 'Y'.
-           88 NO-DIFF-FOUND                                VALUE 'N'.
+       01  WS-FRS-VAL-START-POS                 PIC 9(2).
+       01  WS-SEC-VAL-START-POS                 PIC 9(1).
        01  WS-NUM-FIRST-HALF                    PIC 9(5).
        01  WS-NUM-SECOND-HALF                   PIC 9(5).
        01  WS-LEADING-ZEROS                     PIC 9(2).
-       01  WS-RPT-LENGTH                        PIC 9(1).
        01  OUT-SUM                              PIC 9(18)  VALUE 0.
 
        01  WS-END                               PIC X(25)
@@ -177,38 +172,21 @@
                MOVE 0 TO WS-LEADING-ZEROS 
                INSPECT WS-CURR-NUM TALLYING WS-LEADING-ZEROS 
                    FOR LEADING '0'
-               SUBTRACT WS-LEADING-ZEROS FROM 10 GIVING WS-NUM-LENGTH
-               ADD 1 TO WS-LEADING-ZEROS GIVING WS-VAL-START-POS
-               MOVE WS-CURR-NUM(WS-VAL-START-POS:WS-NUM-LENGTH)
-                                                        TO WS-CURR-NUM-A
+               ADD 1 TO WS-LEADING-ZEROS GIVING WS-FRS-VAL-START-POS
 
-      *        SCAN FOR INVALIDS
-               MOVE 1 TO WS-RPT-LENGTH 
-               DIVIDE WS-NUM-LENGTH BY 2 GIVING WS-HALF
-               PERFORM UNTIL WS-RPT-LENGTH GREATER WS-HALF
-                   MOVE WS-CURR-NUM-A(1:WS-RPT-LENGTH) 
-                                                  TO WS-POT-SEQ
-                   ADD WS-HALF                    TO WS-VAL-START-POS
-                   SET NO-DIFF-FOUND TO TRUE
-                   MOVE 1 TO WS-VAL-START-POS
-                   PERFORM UNTIL DIFF-FOUND OR 
-                                  WS-VAL-START-POS GREATER WS-NUM-LENGTH
-                       MOVE 
-                           WS-CURR-NUM-A(WS-VAL-START-POS:WS-RPT-LENGTH)
-                                                           TO WS-CUR-SEQ
-                       IF WS-POT-SEQ EQUAL WS-CUR-SEQ
-                           CONTINUE
-                       ELSE
-                           SET DIFF-FOUND TO TRUE
-                       END-IF
-                       ADD WS-RPT-LENGTH  TO WS-VAL-START-POS
-                   END-PERFORM 
-                   IF NO-DIFF-FOUND
+      *        BYPASS ODD-LENGTHED NUMBERS
+               IF WS-LEADING-ZEROS EQUAL 0 OR 2 OR 4 OR 6 OR 8 OR 10    
+                   MOVE WS-CURR-NUM(WS-FRS-VAL-START-POS:WS-NUM-LENGTH)
+                                                        TO WS-CURR-NUM-A
+                   DIVIDE WS-NUM-LENGTH BY 2 GIVING WS-HALF
+                   MOVE WS-CURR-NUM-A(1:WS-HALF) TO WS-NUM-FIRST-HALF
+                   ADD 1 TO WS-HALF GIVING WS-SEC-VAL-START-POS
+                   MOVE WS-CURR-NUM-A(WS-SEC-VAL-START-POS:WS-HALF) 
+                                                   TO WS-NUM-SECOND-HALF 
+                   IF WS-NUM-FIRST-HALF EQUAL WS-NUM-SECOND-HALF
                        ADD WS-CURR-NUM TO OUT-SUM
-                       MOVE 5 TO WS-RPT-LENGTH 
                    END-IF
-                   ADD 1                          TO WS-RPT-LENGTH 
-               END-PERFORM
+               END-IF
                ADD 1 TO WS-CURR-NUM
            END-PERFORM
            .
