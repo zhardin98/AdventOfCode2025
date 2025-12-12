@@ -33,11 +33,12 @@
        01  WS-EOF                               PIC X(1).
            88 EOF                                          VALUE 'Y'.
            88 NOT-EOF                                      VALUE 'N'.
-       01  WS-HIGHEST-JOLTAGE                   PIC 9(2).
-       01  WS-HIGHEST-JOLTAGE-A REDEFINES WS-HIGHEST-JOLTAGE.
-           05 WS-HIGHEST-JOLTAGE-TENS           PIC 9(1).
-           05 WS-HIGHEST-JOLTAGE-ONES           PIC 9(1).
-       01  WS-REC-PTR                           PIC 9(3).
+       01  WS-HIGHEST-JOLTAGE                   PIC 9(12)  VALUE 0.
+       01  WS-MULTIPLIER                        PIC 9(12).
+       01  WS-HIGHEST-DIGIT                     PIC 9(1).
+       01  WS-REC-START-POS                     PIC 9(3).
+       01  WS-REC-PTR-1                         PIC 9(3).
+       01  WS-REC-PTR-2                         PIC 9(3).
        01  OUT-SUM                              PIC 9(18)  VALUE 0.
 
        01  WS-END                               PIC X(25)
@@ -90,54 +91,45 @@
       ****************************************************************
        3000-EVALUATE-JOLTAGE.
            
-           PERFORM 3100-GET-LEADING-DIGIT  THRU 3100-EXIT
-           PERFORM 3200-GET-LESS-SIG-DIGIT THRU 3200-EXIT
+           MOVE 0            TO WS-HIGHEST-JOLTAGE
+           MOVE 100000000000 TO WS-MULTIPLIER
+           MOVE 1            TO WS-REC-START-POS
+           SUBTRACT 11 FROM LRECL GIVING WS-REC-PTR-2
+           PERFORM UNTIL WS-MULTIPLIER EQUAL 0
+               PERFORM 3100-GET-HIGHEST-DIGIT THRU 3100-EXIT
+               COMPUTE WS-HIGHEST-JOLTAGE = 
+                 WS-HIGHEST-JOLTAGE + (WS-HIGHEST-DIGIT * WS-MULTIPLIER)
+               DIVIDE 10 INTO WS-MULTIPLIER
+               ADD 1 TO WS-REC-PTR-1 GIVING  WS-REC-START-POS
+               ADD 1 TO WS-REC-PTR-2
+           END-PERFORM
            ADD WS-HIGHEST-JOLTAGE TO OUT-SUM
           .
        3000-EXIT.
            EXIT.
 
       ****************************************************************
-      * GET HIGHEST POSSIBLE DIGIT (UNLESS IN FINAL COLUMN)          *
+      * GET HIGHEST POSSIBLE DIGIT IN GIVEN POINTER RANGE            *
       ****************************************************************
-       3100-GET-LEADING-DIGIT.
+       3100-GET-HIGHEST-DIGIT.
 
-           MOVE 9 TO WS-HIGHEST-JOLTAGE-TENS
-           
-           PERFORM UNTIL WS-HIGHEST-JOLTAGE-TENS EQUAL 0
-               MOVE 1 TO WS-REC-PTR
-               PERFORM UNTIL WS-REC-PTR EQUAL LRECL
-                   IF IN-JOLTS(WS-REC-PTR:1) EQUAL 
-                                                 WS-HIGHEST-JOLTAGE-TENS
+           MOVE 9 TO WS-HIGHEST-DIGIT
+           MOVE WS-REC-START-POS TO WS-REC-PTR-1
+           PERFORM UNTIL WS-HIGHEST-DIGIT EQUAL 0
+               PERFORM UNTIL WS-REC-PTR-1 GREATER WS-REC-PTR-2
+                   IF IN-JOLTS(WS-REC-PTR-1:1) EQUAL WS-HIGHEST-DIGIT
                        GO TO 3100-EXIT
                    END-IF
-                   ADD 1 TO WS-REC-PTR
-               END-PERFORM
-               SUBTRACT 1 FROM WS-HIGHEST-JOLTAGE-TENS
+                   ADD 1 TO WS-REC-PTR-1
+               END-PERFORM 
+               SUBTRACT 1 FROM WS-HIGHEST-DIGIT 
+               MOVE WS-REC-START-POS TO WS-REC-PTR-1
            END-PERFORM  
       *    REACHING THESE INSTRUCTIONS SHOULD BE IMPOSSIBLE
            DISPLAY 'LEADING JOLT DIGIT REACHED ZERO'
            PERFORM 9999-ABEND THRU 9999-EXIT
            .
        3100-EXIT.
-           EXIT.
-
-      ****************************************************************
-      * FIND HIGHEST LESS SIGNIFICANT DIGIT PAST THE HIGHEST DIGIT   *
-      ****************************************************************
-       3200-GET-LESS-SIG-DIGIT.
-
-           ADD 1 TO WS-REC-PTR
-           MOVE 0 TO WS-HIGHEST-JOLTAGE-ONES
-           PERFORM UNTIL WS-REC-PTR GREATER LRECL
-               IF IN-JOLTS(WS-REC-PTR:1) GREATER WS-HIGHEST-JOLTAGE-ONES
-                   MOVE IN-JOLTS(WS-REC-PTR:1) 
-                                              TO WS-HIGHEST-JOLTAGE-ONES
-               END-IF
-               ADD 1 TO WS-REC-PTR
-           END-PERFORM
-           .
-       3200-EXIT.
            EXIT.
 
       ****************************************************************
